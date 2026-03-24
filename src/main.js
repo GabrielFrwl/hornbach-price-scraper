@@ -16,8 +16,19 @@ console.log(`🔨 Hornbach Price Scraper – ${products.length} Artikel`);
 const dataset = await Actor.openDataset();
 
 const crawler = new PlaywrightCrawler({
-    maxConcurrency: 2,
+    maxConcurrency: 1,
     requestHandlerTimeoutSecs: 60,
+    browserPoolOptions: {
+        useFingerprints: true,
+        fingerprintOptions: {
+            fingerprintGeneratorOptions: {
+                browsers: ['chrome'],
+                devices: ['desktop'],
+                locales: ['de-DE'],
+                operatingSystems: ['windows'],
+            },
+        },
+    },
     launchContext: {
         launchOptions: {
             headless: true,
@@ -26,7 +37,7 @@ const crawler = new PlaywrightCrawler({
     },
     async requestHandler({ page, request, log }) {
         const { articleId } = request.userData;
-        await sleep(1000 + Math.random() * 1000);
+        await sleep(2000 + Math.random() * 2000);
 
         try {
             const result = await scrapeHornbach(page, articleId, log);
