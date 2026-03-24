@@ -4,33 +4,24 @@ export async function scrapeHornbach(page, articleId, log) {
     const url = `https://www.hornbach.de/p/artikel/${articleId}/`;
     log.info(`Hornbach: ${url}`);
 
-    await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.waitForTimeout(3000);
 
-    // Länger warten bis JavaScript fertig geladen hat
-    await page.waitForTimeout(5000);
-
-    // Preis direkt aus dem Text extrahieren
     const priceRaw = await page.evaluate(() => {
-        // Alle Text-Nodes durchsuchen die € enthalten
-        const walker = document.createTreeWalker(
-            document.body,
-            NodeFilter.SHOW_TEXT,
-            null
-        );
-        const prices = [];
-        let node;
-        while ((node = walker.nextNode())) {
-            const text = node.textContent.trim();
-            if (text.match(/^\d+,\d+\s*€\s*\*?$/) && text.includes('€')) {
-                prices.push(text);
+        const allEls = document.querySelectorAll('[class*="ad_"]');
+        for (const el of allEls) {
+            const text = el.textContent.trim();
+            if (text.includes('€') && text.includes('pro ST')) {
+                const match = text.match(/(\d+,\d+)\s*€/);
+                if (match) return match[1] + ' €';
             }
         }
-        return prices[0] ?? null;
+        return null;
     });
 
-    const productName = await page.locator('h1').first().textContent().catch(() => null);
+    log.info(`Hornbach raw price: "${priceRaw}"`);
 
-    log.info(`Hornbach raw price: ${priceRaw}`);
+    const productName = await page.locator('h1').first().textContent().catch(() => null);
 
     if (!priceRaw) {
         log.warning(`Hornbach: Kein Preis gefunden für ${articleId}`);
