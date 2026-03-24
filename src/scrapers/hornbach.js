@@ -50,14 +50,21 @@ export async function scrapeHornbach(articleId, log) {
     // 1. Preis abrufen
     const priceRes = await fetch(GRAPHQL_URL, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Accept-Language': 'de-DE,de;q=0.9',
-            'Origin': 'https://www.hornbach.de',
-            'Referer': `https://www.hornbach.de/p/artikel/${articleId}/`,
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        },
+headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json, */*',
+    'Accept-Language': 'de-DE,de;q=0.9',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Origin': 'https://www.hornbach.de',
+    'Referer': 'https://www.hornbach.de/',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    'sec-ch-ua': '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"',
+    'sec-fetch-dest': 'empty',
+    'sec-fetch-mode': 'cors',
+    'sec-fetch-site': 'same-origin',
+},
         body: JSON.stringify([{
             operationName: 'PriceAndDeliveryInfo',
             query: PRICE_QUERY,
