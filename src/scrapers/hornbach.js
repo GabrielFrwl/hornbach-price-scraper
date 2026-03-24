@@ -22,7 +22,16 @@ export async function scrapeHornbach(page, articleId, log) {
         await closeBtn.click();
         await page.waitForTimeout(500);
     }
-
+    
+// Debug: Seiten-Screenshot und Preis-HTML ausgeben
+await page.screenshot({ path: 'hornbach-debug.png' });
+const bodyHTML = await page.evaluate(() => {
+    // Alle Elemente die "price" im class-Namen haben
+    const els = document.querySelectorAll('[class*="price"], [data-testid*="price"]');
+    return Array.from(els).map(el => `${el.className} → ${el.textContent.trim()}`).join('\n');
+});
+console.log('Preis-Elemente gefunden:\n', bodyHTML);
+    
     // Preis warten
     const found = await safeWaitForSelector(page, '[data-testid="product-price"], .price__value, [class*="price"]', 8000);
     if (!found) {
