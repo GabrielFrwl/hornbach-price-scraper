@@ -13,8 +13,7 @@ if (!products.length) {
 
 console.log(`🔨 Hornbach Price Scraper – ${products.length} Artikel`);
 
-const dataset = await Actor.openDataset('hornbach-prices');
-const results = [];
+const dataset = await Actor.openDataset();
 
 const crawler = new PlaywrightCrawler({
     maxConcurrency: 2,
