@@ -2,13 +2,15 @@
     "name": "hornbach-price-scraper",
     "version": "0.1.0",
     "type": "module",
-    "description": "Hornbach Preis-Scraper via GraphQL API – kein Browser nötig",
+    "description": "Hornbach Preis-Scraper via Playwright",
     "main": "src/main.js",
     "scripts": {
         "start": "node src/main.js"
     },
     "dependencies": {
-        "apify": "^3.2.0"
+        "apify": "^3.2.0",
+        "crawlee": "^3.9.0",
+        "playwright": "^1.40.0"
     },
     "engines": {
         "node": ">=18.0.0"
