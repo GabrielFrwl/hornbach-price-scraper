@@ -1,4 +1,4 @@
-import { parsePrice, safeWaitForSelector } from '../utils/priceParser.js';
+import { parsePrice } from '../utils/priceParser.js';
 
 export async function scrapeHornbach(page, articleId, log) {
     const url = `https://www.hornbach.de/p/artikel/${articleId}/`;
@@ -22,30 +22,26 @@ export async function scrapeHornbach(page, articleId, log) {
         await closeBtn.click();
         await page.waitForTimeout(500);
     }
-    
-// Debug: Seiten-Screenshot und Preis-HTML ausgeben
-await page.screenshot({ path: 'hornbach-debug.png' });
-const bodyHTML = await page.evaluate(() => {
-    // Alle Elemente die "price" im class-Namen haben
-    const els = document.querySelectorAll('[class*="price"], [data-testid*="price"]');
-    return Array.from(els).map(el => `${el.className} → ${el.textContent.trim()}`).join('\n');
-});
-console.log('Preis-Elemente gefunden:\n', bodyHTML);
-    
-    // Preis warten
-    const found = await safeWaitForSelector(page, '[data-testid="product-price"], .price__value, [class*="price"]', 8000);
-    if (!found) {
+
+    // Preis aus erstem Preis-Element holen
+    const priceRaw = await page.evaluate(() => {
+        const allEls = document.querySelectorAll('[class^="ad_"]');
+        for (const el of allEls) {
+            const text = el.textContent.trim();
+            if (text.includes('€') && text.includes('pro ST')) {
+                const match = text.match(/(\d+,\d+)\s*€/);
+                if (match) return match[1] + ' €';
+            }
+        }
+        return null;
+    });
+
+    const productName = await page.locator('h1').first().textContent().catch(() => null);
+
+    if (!priceRaw) {
         log.warning(`Hornbach: Kein Preis gefunden für ${articleId}`);
         return null;
     }
-
-    const priceRaw = await page
-        .locator('[data-testid="formatted-price"], .price__value, [class*="price__selling"]')
-        .first()
-        .textContent()
-        .catch(() => null);
-
-    const productName = await page.locator('h1').first().textContent().catch(() => null);
 
     return {
         articleId,
@@ -54,7 +50,7 @@ console.log('Preis-Elemente gefunden:\n', bodyHTML);
         price: parsePrice(priceRaw),
         currency: 'EUR',
         productUrl: page.url(),
-        inStock: priceRaw !== null,
+        inStock: true,
         scrapedAt: new Date().toISOString(),
     };
 }
