@@ -1,10 +1,6 @@
 import { Actor } from 'apify';
-import { sleep } from 'crawlee';
-import { chromium } from 'playwright-extra';
-import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { PlaywrightCrawler, sleep } from 'crawlee';
 import { scrapeHornbach } from './scrapers/hornbach.js';
-
-chromium.use(StealthPlugin());
 
 await Actor.init();
 
@@ -19,40 +15,47 @@ console.log(`🔨 Hornbach Price Scraper – ${products.length} Artikel`);
 
 const dataset = await Actor.openDataset();
 
-const browser = await chromium.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-});
+const proxyConfiguration = await Actor.createProxyConfiguration();
 
-for (const product of products) {
-    const { articleId } = product;
-    const page = await browser.newPage();
-
-    try {
+const crawler = new PlaywrightCrawler({
+    proxyConfiguration,
+    maxConcurrency: 1,
+    requestHandlerTimeoutSecs: 60,
+    launchContext: {
+        launchOptions: {
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        },
+    },
+    async requestHandler({ page, request, log }) {
+        const { articleId } = request.userData;
         await sleep(2000 + Math.random() * 2000);
-        const result = await scrapeHornbach(page, articleId, console);
 
-        if (result) {
-            await dataset.pushData(result);
-            console.log(`✅ ${articleId} | ${result.price} EUR | "${result.productName}"`);
-        } else {
+        try {
+            const result = await scrapeHornbach(page, articleId, log);
+            if (result) {
+                await dataset.pushData(result);
+                log.info(`✅ ${articleId} | ${result.price} EUR | "${result.productName}"`);
+            } else {
+                await dataset.pushData({
+                    articleId, shop: 'hornbach', price: null,
+                    error: 'Not found', scrapedAt: new Date().toISOString(),
+                });
+            }
+        } catch (err) {
+            log.error(`❌ ${articleId} | ${err.message}`);
             await dataset.pushData({
                 articleId, shop: 'hornbach', price: null,
-                error: 'Not found', scrapedAt: new Date().toISOString(),
+                error: err.message, scrapedAt: new Date().toISOString(),
             });
         }
-    } catch (err) {
-        console.error(`❌ ${articleId} | ${err.message}`);
-        await dataset.pushData({
-            articleId, shop: 'hornbach', price: null,
-            error: err.message, scrapedAt: new Date().toISOString(),
-        });
-    } finally {
-        await page.close();
-    }
-}
+    },
+});
 
-await browser.close();
+await crawler.run(products.map(p => ({
+    url: `https://www.hornbach.de/p/artikel/${p.articleId}/`,
+    userData: { articleId: p.articleId },
+})));
 
 const { itemCount } = await dataset.getInfo();
 console.log(`\n🏁 Fertig! ${itemCount} Ergebnisse gespeichert.`);
